@@ -1,610 +1,1036 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>老後資金かんたん診断ツール | koyuki-life.com</title>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>50代からのNISA診断＆ライフプランシート | koyuki-life.com</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --pink-main: #F8BBD9;
+    --pink-dark: #E91E8C;
+    --pink-mid: #F48FB1;
+    --pink-light: #FCE4EC;
+    --pink-pale: #FFF0F6;
+    --pink-deep: #C2185B;
+    --text-dark: #4A2040;
+    --text-mid: #7B4F6E;
+    --text-light: #A07090;
+    --white: #FFFFFF;
+    --shadow: 0 4px 20px rgba(233,30,140,0.12);
+    --radius: 20px;
+  }
 
-    body {
-      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
-      background: linear-gradient(135deg, #fff0f5 0%, #fdf6ec 50%, #fff0f5 100%);
-      min-height: 100vh;
-      padding: 20px 16px 60px;
-      color: #5a3e4b;
-    }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    .container {
-      max-width: 680px;
-      margin: 0 auto;
-    }
+  body {
+    font-family: 'Hiragino Maru Gothic ProN', 'BIZ UDPGothic', 'Rounded Mplus 1c', sans-serif;
+    background: linear-gradient(135deg, #FFF0F6 0%, #FCE4EC 50%, #FFF8FB 100%);
+    color: var(--text-dark);
+    min-height: 100vh;
+    line-height: 1.7;
+  }
 
-    /* ヘッダー */
-    .header {
-      text-align: center;
-      padding: 32px 0 24px;
-    }
-    .header-icon {
-      font-size: 48px;
-      margin-bottom: 8px;
-    }
-    .header h1 {
-      font-size: 22px;
-      font-weight: 700;
-      color: #c26b8a;
-      line-height: 1.4;
-      margin-bottom: 8px;
-    }
-    .header p {
-      font-size: 13px;
-      color: #9e7b8a;
-    }
+  /* ===== HEADER ===== */
+  header {
+    background: linear-gradient(135deg, #E91E8C, #F06292);
+    color: white;
+    padding: 24px 20px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='20' cy='20' r='15' fill='rgba(255,255,255,0.05)'/%3E%3Ccircle cx='80' cy='70' r='20' fill='rgba(255,255,255,0.05)'/%3E%3Ccircle cx='60' cy='10' r='8' fill='rgba(255,255,255,0.05)'/%3E%3C/svg%3E");
+  }
+  header h1 {
+    font-size: clamp(18px, 5vw, 26px);
+    font-weight: 900;
+    letter-spacing: 0.03em;
+    position: relative;
+  }
+  header p {
+    font-size: 13px;
+    opacity: 0.9;
+    margin-top: 6px;
+    position: relative;
+  }
 
-    /* カード共通 */
-    .card {
-      background: #fff;
-      border-radius: 20px;
-      padding: 28px 24px;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 20px rgba(194, 107, 138, 0.10);
-      border: 1.5px solid #f5d9e5;
-    }
+  /* ===== CHARACTERS ===== */
+  .characters {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    padding: 16px 20px 0;
+    position: relative;
+  }
+  .char {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .char-icon {
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    border: 3px solid white;
+    box-shadow: var(--shadow);
+  }
+  .char-icon.cookie { background: linear-gradient(135deg, #FFE0EC, #FFAAD4); }
+  .char-icon.koyuki { background: linear-gradient(135deg, #E8D5FF, #C9A0FF); }
+  .char-name {
+    font-size: 11px;
+    color: white;
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
 
-    .card-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: #c26b8a;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .card-title::before {
-      content: '';
-      display: inline-block;
-      width: 4px;
-      height: 18px;
-      background: linear-gradient(to bottom, #e8a0bc, #f5c6d8);
-      border-radius: 2px;
-    }
+  /* ===== NAV TABS ===== */
+  .tabs {
+    display: flex;
+    background: var(--pink-light);
+    border-bottom: 2px solid var(--pink-main);
+    sticky: top 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 14px 8px;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: clamp(13px, 3.5vw, 15px);
+    font-weight: 700;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: all 0.25s;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+  }
+  .tab-btn.active {
+    color: var(--pink-dark);
+    border-bottom-color: var(--pink-dark);
+    background: var(--white);
+  }
+  .tab-btn:hover:not(.active) {
+    background: rgba(248,187,217,0.3);
+    color: var(--text-mid);
+  }
 
-    /* 入力フォーム */
-    .form-group {
-      margin-bottom: 18px;
-    }
-    .form-label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: #8b5e70;
-      margin-bottom: 6px;
-    }
-    .form-hint {
-      font-size: 11px;
-      color: #b89aa8;
-      margin-left: 4px;
-      font-weight: 400;
-    }
-    .input-wrapper {
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-    .form-input {
-      width: 100%;
-      padding: 12px 52px 12px 16px;
-      border: 1.5px solid #f0c8d8;
-      border-radius: 12px;
-      font-size: 16px;
-      color: #5a3e4b;
-      background: #fffafc;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      -webkit-appearance: none;
-    }
-    .form-input:focus {
-      border-color: #e8a0bc;
-      box-shadow: 0 0 0 3px rgba(232, 160, 188, 0.18);
-    }
-    .input-unit {
-      position: absolute;
-      right: 14px;
-      font-size: 13px;
-      color: #b89aa8;
-      pointer-events: none;
-    }
+  /* ===== MAIN CONTAINER ===== */
+  .container { max-width: 700px; margin: 0 auto; padding: 24px 16px 60px; }
 
-    /* 計算ボタン */
-    .btn-primary {
-      width: 100%;
-      padding: 16px;
-      background: linear-gradient(135deg, #e8a0bc, #c26b8a);
-      color: #fff;
-      border: none;
-      border-radius: 14px;
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: opacity 0.2s, transform 0.1s;
-      letter-spacing: 0.5px;
-      box-shadow: 0 4px 16px rgba(194, 107, 138, 0.30);
-    }
-    .btn-primary:hover { opacity: 0.92; }
-    .btn-primary:active { transform: scale(0.98); }
+  /* ===== SECTIONS ===== */
+  .section { display: none; }
+  .section.active { display: block; }
 
-    /* 結果エリア */
-    .result-section { animation: fadeIn 0.5s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  /* ===== CARD ===== */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(248,187,217,0.4);
+  }
+  .card h2 {
+    font-size: clamp(15px, 4vw, 18px);
+    color: var(--pink-deep);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card h2::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 22px;
+    background: linear-gradient(180deg, var(--pink-dark), var(--pink-mid));
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
 
-    .result-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-    @media (max-width: 480px) {
-      .result-grid { grid-template-columns: 1fr; }
-    }
+  /* ===== QUESTION ===== */
+  .question {
+    margin-bottom: 24px;
+  }
+  .question-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .question-num {
+    display: inline-flex;
+    width: 26px; height: 26px;
+    background: linear-gradient(135deg, var(--pink-dark), var(--pink-mid));
+    color: white;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 900;
+    flex-shrink: 0;
+  }
+  .options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .option-btn {
+    padding: 10px 16px;
+    border: 2px solid var(--pink-main);
+    border-radius: 50px;
+    background: var(--white);
+    color: var(--text-mid);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .option-btn:hover {
+    border-color: var(--pink-mid);
+    background: var(--pink-pale);
+    color: var(--pink-dark);
+  }
+  .option-btn.selected {
+    border-color: var(--pink-dark);
+    background: linear-gradient(135deg, var(--pink-dark), var(--pink-mid));
+    color: white;
+    box-shadow: 0 3px 12px rgba(233,30,140,0.3);
+  }
 
-    .result-box {
-      background: linear-gradient(135deg, #fff5f9, #fffaf5);
-      border: 1.5px solid #f5d9e5;
-      border-radius: 16px;
-      padding: 18px 14px;
-      text-align: center;
-    }
-    .result-box.full { grid-column: 1 / -1; }
-    .result-box.highlight {
-      background: linear-gradient(135deg, #fce8f0, #fdf5e8);
-      border-color: #e8a0bc;
-    }
-    .result-box.warning {
-      background: linear-gradient(135deg, #fff0f0, #fffaf5);
-      border-color: #f5b8b8;
-    }
-    .result-box.safe {
-      background: linear-gradient(135deg, #f0f9f0, #f9fff5);
-      border-color: #a8d8a8;
-    }
-    .result-label {
-      font-size: 12px;
-      color: #9e7b8a;
-      margin-bottom: 6px;
-      font-weight: 600;
-    }
-    .result-value {
-      font-size: 22px;
-      font-weight: 700;
-      color: #c26b8a;
-      line-height: 1.2;
-    }
-    .result-value.big { font-size: 26px; }
-    .result-value.red { color: #d94f6f; }
-    .result-value.green { color: #4f9e6f; }
-    .result-sub {
-      font-size: 11px;
-      color: #b89aa8;
-      margin-top: 4px;
-    }
+  /* ===== BUTTONS ===== */
+  .btn-primary {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 50px;
+    background: linear-gradient(135deg, var(--pink-dark), #F06292);
+    color: white;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: all 0.25s;
+    box-shadow: 0 6px 20px rgba(233,30,140,0.35);
+    letter-spacing: 0.05em;
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(233,30,140,0.45);
+  }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-secondary {
+    padding: 12px 28px;
+    border: 2px solid var(--pink-dark);
+    border-radius: 50px;
+    background: transparent;
+    color: var(--pink-dark);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-secondary:hover {
+    background: var(--pink-pale);
+  }
 
-    /* NISAセクション */
-    .nisa-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-    .nisa-badge {
-      background: linear-gradient(135deg, #e8a0bc, #f5c6d8);
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 20px;
-    }
-    .nisa-compare {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    @media (max-width: 480px) {
-      .nisa-compare { grid-template-columns: 1fr; }
-    }
-    .nisa-box {
-      border-radius: 14px;
-      padding: 16px;
-      text-align: center;
-    }
-    .nisa-box.normal {
-      background: #faf5f8;
-      border: 1.5px solid #e8cfd8;
-    }
-    .nisa-box.nisa {
-      background: linear-gradient(135deg, #fce8f0, #fdf5e8);
-      border: 1.5px solid #e8a0bc;
-    }
-    .nisa-box-label {
-      font-size: 12px;
-      font-weight: 700;
-      margin-bottom: 10px;
-      color: #8b5e70;
-    }
-    .nisa-box.nisa .nisa-box-label { color: #c26b8a; }
-    .nisa-amount {
-      font-size: 20px;
-      font-weight: 700;
-      color: #5a3e4b;
-      margin-bottom: 4px;
-    }
-    .nisa-box.nisa .nisa-amount { color: #c26b8a; }
-    .nisa-diff {
-      display: inline-block;
-      background: linear-gradient(135deg, #e8a0bc, #c26b8a);
-      color: #fff;
-      font-size: 12px;
-      font-weight: 700;
-      padding: 4px 12px;
-      border-radius: 20px;
-      margin-top: 8px;
-    }
-    .nisa-note {
-      font-size: 11px;
-      color: #b89aa8;
-      margin-top: 14px;
-      line-height: 1.6;
-      text-align: center;
-      background: #faf5f8;
-      border-radius: 10px;
-      padding: 10px 14px;
-    }
+  /* ===== RESULT CARD ===== */
+  .result-card {
+    background: linear-gradient(135deg, #FFF0F6, #FCE4EC);
+    border: 2px solid var(--pink-main);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .result-card h3 {
+    font-size: 16px;
+    color: var(--pink-deep);
+    margin-bottom: 12px;
+    font-weight: 900;
+  }
+  .result-badge {
+    display: inline-block;
+    padding: 10px 24px;
+    border-radius: 50px;
+    background: linear-gradient(135deg, var(--pink-dark), #F06292);
+    color: white;
+    font-size: 16px;
+    font-weight: 900;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 14px rgba(233,30,140,0.3);
+  }
+  .result-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px dashed var(--pink-main);
+    font-size: 14px;
+  }
+  .result-item:last-child { border-bottom: none; }
+  .result-item-label {
+    font-weight: 700;
+    color: var(--text-mid);
+    white-space: nowrap;
+    min-width: 90px;
+    font-size: 12px;
+  }
+  .result-item-value {
+    color: var(--text-dark);
+    font-weight: 600;
+  }
+  .advice-box {
+    background: linear-gradient(135deg, #FFF3E0, #FFF8E1);
+    border-left: 4px solid #FFB300;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+    font-size: 14px;
+    line-height: 1.8;
+    color: #5D4037;
+  }
+  .advice-box .speech-bubble {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .advice-box .koyuki-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
 
-    /* ブログボタン */
-    .btn-blog {
-      display: block;
-      width: 100%;
-      padding: 18px;
-      background: linear-gradient(135deg, #f5c6d8, #e8a0bc, #c26b8a);
-      color: #fff;
-      border: none;
-      border-radius: 16px;
-      font-size: 16px;
-      font-weight: 700;
-      text-align: center;
-      text-decoration: none;
-      cursor: pointer;
-      transition: opacity 0.2s, transform 0.1s;
-      box-shadow: 0 6px 24px rgba(194, 107, 138, 0.35);
-      letter-spacing: 0.5px;
-      margin-top: 4px;
-    }
-    .btn-blog:hover { opacity: 0.92; }
-    .btn-blog:active { transform: scale(0.98); }
-    .btn-blog-sub {
-      display: block;
-      font-size: 12px;
-      font-weight: 400;
-      opacity: 0.85;
-      margin-top: 3px;
-    }
+  /* ===== LIFE PLAN ===== */
+  .form-group { margin-bottom: 18px; }
+  .form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-mid);
+    margin-bottom: 6px;
+  }
+  .form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--pink-main);
+    border-radius: 12px;
+    background: var(--white);
+    font-family: inherit;
+    font-size: 15px;
+    color: var(--text-dark);
+    transition: border-color 0.2s;
+    appearance: none;
+  }
+  .form-input:focus {
+    outline: none;
+    border-color: var(--pink-dark);
+    box-shadow: 0 0 0 3px rgba(233,30,140,0.1);
+  }
+  .input-unit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .input-unit .form-input { flex: 1; }
+  .unit-text {
+    font-size: 13px;
+    color: var(--text-light);
+    white-space: nowrap;
+  }
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
 
-    /* フッター */
-    .footer {
-      text-align: center;
-      font-size: 11px;
-      color: #c4a0b0;
-      margin-top: 32px;
-      line-height: 1.8;
-    }
+  /* ===== RESULT NUMBERS ===== */
+  .big-result {
+    text-align: center;
+    padding: 28px 20px;
+    background: linear-gradient(135deg, var(--pink-deep), var(--pink-dark));
+    border-radius: var(--radius);
+    color: white;
+    margin-bottom: 20px;
+  }
+  .big-result .label { font-size: 13px; opacity: 0.85; margin-bottom: 8px; }
+  .big-result .amount {
+    font-size: clamp(32px, 9vw, 52px);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .big-result .unit { font-size: 18px; opacity: 0.85; }
+  .achievement {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 50px;
+    margin-top: 14px;
+    font-weight: 900;
+    font-size: 15px;
+  }
+  .achievement.ok { background: rgba(255,255,255,0.25); }
+  .achievement.ng { background: rgba(0,0,0,0.2); }
 
-    /* 花飾り */
-    .flower-divider {
-      text-align: center;
-      color: #e8a0bc;
-      font-size: 18px;
-      letter-spacing: 6px;
-      margin: 6px 0 20px;
-    }
-  </style>
+  /* ===== CHART ===== */
+  .chart-wrapper {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+  }
+  .chart-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-mid);
+    margin-bottom: 14px;
+    text-align: center;
+  }
+  .chart-container { position: relative; height: 280px; }
+
+  /* ===== PROGRESS BAR ===== */
+  .progress-bar-wrap {
+    background: var(--pink-light);
+    border-radius: 10px;
+    height: 8px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 10px;
+    background: linear-gradient(90deg, var(--pink-dark), var(--pink-mid));
+    transition: width 0.5s ease;
+  }
+
+  /* ===== FOOTER ===== */
+  footer {
+    background: var(--text-dark);
+    color: rgba(255,255,255,0.75);
+    text-align: center;
+    padding: 24px 16px;
+    font-size: 13px;
+    line-height: 1.8;
+  }
+  footer a {
+    color: var(--pink-main);
+    text-decoration: none;
+    font-weight: 700;
+  }
+  footer a:hover { text-decoration: underline; }
+
+  /* ===== DISCLAIMER ===== */
+  .disclaimer {
+    font-size: 11px;
+    color: var(--text-light);
+    background: #FFF9FB;
+    border: 1px solid var(--pink-main);
+    border-radius: 10px;
+    padding: 12px 14px;
+    line-height: 1.7;
+    margin-top: 4px;
+  }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 480px) {
+    .form-row { grid-template-columns: 1fr; }
+    .card { padding: 18px 16px; }
+    .result-card { padding: 18px 16px; }
+  }
+
+  /* ===== ANIMATIONS ===== */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in { animation: fadeInUp 0.45s ease both; }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.04); }
+  }
+  .pulse { animation: pulse 2s ease infinite; }
+
+  /* ===== HIDDEN ===== */
+  .hidden { display: none !important; }
+</style>
 </head>
 <body>
-  <div id="root"></div>
 
-  <script type="text/babel">
-    const { useState } = React;
+<!-- HEADER -->
+<header>
+  <div class="characters">
+    <div class="char">
+      <div class="char-icon cookie">🐱</div>
+      <div class="char-name">Cookie</div>
+    </div>
+    <div style="color:white;align-self:center;font-size:20px;">♡</div>
+    <div class="char">
+      <div class="char-icon koyuki">👩</div>
+      <div class="char-name">Koyuki</div>
+    </div>
+  </div>
+  <h1 style="margin-top:12px;">50代からのNISA診断<br>＆ライフプランシート</h1>
+  <p>あなたにぴったりの投資スタイルを見つけよう💕</p>
+</header>
 
-    function formatMan(yen) {
-      const man = Math.round(yen / 10000);
-      if (man >= 10000) {
-        const oku = Math.floor(man / 10000);
-        const rest = man % 10000;
-        return rest > 0 ? `${oku}億${rest.toLocaleString()}万円` : `${oku}億円`;
-      }
-      return `${man.toLocaleString()}万円`;
-    }
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('diagnosis')">🌸 NISA診断</button>
+  <button class="tab-btn" onclick="switchTab('lifeplan')">📊 ライフプラン</button>
+</div>
 
-    function calcFV(monthlyAmount, annualRate, months) {
-      if (annualRate === 0) return monthlyAmount * months;
-      const r = annualRate / 12;
-      return monthlyAmount * ((Math.pow(1 + r, months) - 1) / r) * (1 + r);
-    }
+<!-- MAIN -->
+<div class="container">
 
-    function App() {
-      const [form, setForm] = useState({
-        age: '',
-        monthlySavings: '',
-        totalSavings: '',
-        monthlyExpense: '',
-      });
-      const [result, setResult] = useState(null);
-      const [errors, setErrors] = useState({});
+  <!-- ========== NISA診断 ========== -->
+  <section id="section-diagnosis" class="section active">
 
-      const retirementAge = 65;
-      const lifeExpectancy = 90;
+    <!-- 診断フォーム -->
+    <div id="quiz-form" class="fade-in">
+      <div class="card">
+        <h2>NISA診断</h2>
+        <p style="font-size:13px;color:var(--text-light);margin-bottom:20px;">5つの質問に答えてあなたに合ったNISAスタイルを診断します🌸</p>
 
-      function validate() {
-        const e = {};
-        if (!form.age || form.age < 30 || form.age >= 65) e.age = '30〜64歳で入力してください';
-        if (!form.monthlySavings || form.monthlySavings < 0) e.monthlySavings = '0以上の金額を入力してください';
-        if (!form.totalSavings || form.totalSavings < 0) e.totalSavings = '0以上の金額を入力してください';
-        if (!form.monthlyExpense || form.monthlyExpense <= 0) e.monthlyExpense = '金額を入力してください';
-        return e;
-      }
-
-      function calculate() {
-        const e = validate();
-        setErrors(e);
-        if (Object.keys(e).length > 0) return;
-
-        const age = Number(form.age);
-        const monthlySavings = Number(form.monthlySavings) * 10000;
-        const totalSavings = Number(form.totalSavings) * 10000;
-        const monthlyExpense = Number(form.monthlyExpense) * 10000;
-
-        const yearsToRetire = retirementAge - age;
-        const retirementYears = lifeExpectancy - retirementAge;
-        const months = yearsToRetire * 12;
-        const retirementMonths = retirementYears * 12;
-
-        // 通常貯蓄（利息なし）
-        const normalAccumulated = totalSavings + monthlySavings * months;
-        const totalNeeded = monthlyExpense * retirementMonths;
-        const shortfall = totalNeeded - normalAccumulated;
-        const monthlyShortfall = shortfall > 0 ? shortfall / retirementMonths : 0;
-
-        // NISA（年利5%複利）
-        const nisaRate = 0.05;
-        const nisaSavingsFV = calcFV(monthlySavings, nisaRate, months);
-        const nisaCurrentFV = totalSavings * Math.pow(1 + nisaRate, yearsToRetire);
-        const nisaTotal = nisaSavingsFV + nisaCurrentFV;
-        const nisaShortfall = totalNeeded - nisaTotal;
-        const nisaMonthlyShortfall = nisaShortfall > 0 ? nisaShortfall / retirementMonths : 0;
-
-        const nisaBonus = nisaTotal - normalAccumulated;
-
-        setResult({
-          yearsToRetire,
-          retirementYears,
-          normalAccumulated,
-          totalNeeded,
-          shortfall,
-          monthlyShortfall,
-          nisaTotal,
-          nisaShortfall,
-          nisaMonthlyShortfall,
-          nisaBonus,
-          isSafe: shortfall <= 0,
-          nisaIsSafe: nisaShortfall <= 0,
-        });
-      }
-
-      function handleChange(key, value) {
-        setForm(f => ({ ...f, [key]: value }));
-        if (errors[key]) setErrors(e => ({ ...e, [key]: undefined }));
-      }
-
-      const InputField = ({ label, hint, id, unit, placeholder }) => (
-        <div className="form-group">
-          <label className="form-label" htmlFor={id}>
-            {label}
-            {hint && <span className="form-hint">{hint}</span>}
-          </label>
-          <div className="input-wrapper">
-            <input
-              className="form-input"
-              type="number"
-              id={id}
-              placeholder={placeholder}
-              value={form[id]}
-              onChange={e => handleChange(id, e.target.value)}
-              inputMode="numeric"
-            />
-            <span className="input-unit">{unit}</span>
-          </div>
-          {errors[id] && <p style={{fontSize:'12px',color:'#d94f6f',marginTop:'4px'}}>{errors[id]}</p>}
+        <!-- 進捗バー -->
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="quiz-progress" style="width:0%"></div>
         </div>
-      );
 
-      return (
-        <div className="container">
-          {/* ヘッダー */}
-          <div className="header">
-            <div className="header-icon">🌸</div>
-            <h1>老後資金かんたん診断ツール</h1>
-            <p>あなたの老後の備えを、簡単に確認できます</p>
+        <!-- Q1 -->
+        <div class="question" data-q="1">
+          <div class="question-label">
+            <span class="question-num">1</span>
+            現在の年齢は？
           </div>
-
-          {/* 入力フォーム */}
-          <div className="card">
-            <div className="card-title">あなたの情報を入力してね</div>
-
-            <InputField
-              label="現在の年齢"
-              id="age"
-              unit="歳"
-              placeholder="52"
-            />
-            <InputField
-              label="毎月の貯蓄額"
-              hint="（積立・貯金の合計）"
-              id="monthlySavings"
-              unit="万円"
-              placeholder="5"
-            />
-            <InputField
-              label="現在の貯蓄総額"
-              hint="（預金・投資残高の合計）"
-              id="totalSavings"
-              unit="万円"
-              placeholder="500"
-            />
-            <InputField
-              label="老後に必要な月々の生活費"
-              hint="（希望額）"
-              id="monthlyExpense"
-              unit="万円"
-              placeholder="20"
-            />
-
-            <button className="btn-primary" onClick={calculate}>
-              🌷　診断する　🌷
-            </button>
-          </div>
-
-          {/* 結果 */}
-          {result && (
-            <div className="result-section">
-              {/* 基本診断 */}
-              <div className="card">
-                <div className="card-title">診断結果</div>
-                <div className="flower-divider">✿ ✿ ✿</div>
-
-                <div className="result-grid">
-                  <div className="result-box full highlight">
-                    <div className="result-label">65歳までに貯まる金額（今のペース）</div>
-                    <div className="result-value big">{formatMan(result.normalAccumulated)}</div>
-                    <div className="result-sub">あと {result.yearsToRetire} 年間の積み立て</div>
-                  </div>
-
-                  <div className="result-box">
-                    <div className="result-label">老後に必要な総額</div>
-                    <div className="result-value">{formatMan(result.totalNeeded)}</div>
-                    <div className="result-sub">{result.retirementYears}年間分</div>
-                  </div>
-
-                  <div className={`result-box ${result.isSafe ? 'safe' : 'warning'}`}>
-                    <div className="result-label">
-                      {result.isSafe ? '老後の余裕額' : '不足する金額'}
-                    </div>
-                    <div className={`result-value ${result.isSafe ? 'green' : 'red'}`}>
-                      {result.isSafe ? '+' : ''}{formatMan(Math.abs(result.shortfall))}
-                    </div>
-                    <div className="result-sub">
-                      {result.isSafe
-                        ? '素晴らしい！余裕があります'
-                        : `月々 ${Math.round(result.monthlyShortfall / 10000).toLocaleString()}万円 不足`}
-                    </div>
-                  </div>
-                </div>
-
-                {!result.isSafe && (
-                  <p style={{
-                    fontSize: '13px',
-                    color: '#8b5e70',
-                    background: '#fff5f9',
-                    borderRadius: '12px',
-                    padding: '12px 14px',
-                    lineHeight: '1.7',
-                    marginTop: '4px'
-                  }}>
-                    💡 今のペースだと、老後の生活費が月々
-                    <strong style={{color:'#d94f6f'}}>{Math.round(result.monthlyShortfall / 10000).toLocaleString()}万円</strong>
-                    ほど不足する見込みです。NISAの活用や積立額の見直しを検討してみましょう！
-                  </p>
-                )}
-              </div>
-
-              {/* NISA比較 */}
-              <div className="card">
-                <div className="nisa-header">
-                  <div className="card-title" style={{marginBottom:0}}>NISAを活用するとこうなる</div>
-                  <div className="nisa-badge">✨ 比較</div>
-                </div>
-
-                <div className="nisa-compare">
-                  <div className="nisa-box normal">
-                    <div className="nisa-box-label">今のままの場合</div>
-                    <div className="nisa-amount">{formatMan(result.normalAccumulated)}</div>
-                    <div style={{fontSize:'12px',color:'#9e7b8a'}}>利息ほぼなし</div>
-                    {!result.isSafe && (
-                      <div style={{fontSize:'12px',color:'#d94f6f',marginTop:'6px',fontWeight:'600'}}>
-                        {formatMan(Math.abs(result.shortfall))} 不足
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="nisa-box nisa">
-                    <div className="nisa-box-label">NISA活用の場合</div>
-                    <div className="nisa-amount">{formatMan(result.nisaTotal)}</div>
-                    <div style={{fontSize:'12px',color:'#9e7b8a'}}>年利5%想定</div>
-                    {result.nisaIsSafe ? (
-                      <div style={{fontSize:'12px',color:'#4f9e6f',marginTop:'6px',fontWeight:'600'}}>
-                        余裕あり！🎉
-                      </div>
-                    ) : (
-                      <div style={{fontSize:'12px',color:'#d94f6f',marginTop:'6px',fontWeight:'600'}}>
-                        {formatMan(Math.abs(result.nisaShortfall))} 不足
-                      </div>
-                    )}
-                    <div className="nisa-diff">
-                      +{formatMan(result.nisaBonus)} アップ
-                    </div>
-                  </div>
-                </div>
-
-                <div className="nisa-note">
-                  ※ NISA試算は毎月の積立を年利5%で複利運用した場合の目安です。<br />
-                  実際の運用成績は市場状況によって異なります。<br />
-                  現在の貯蓄も同率で運用すると仮定しています。
-                </div>
-              </div>
-
-              {/* ブログへ */}
-              <div className="card">
-                <div className="card-title">もっと詳しく知りたい方へ</div>
-                <p style={{fontSize:'13px',color:'#8b5e70',lineHeight:'1.8',marginBottom:'16px'}}>
-                  NISAの始め方・老後資金の増やし方・50代からでも間に合う投資の話を、
-                  ブログでわかりやすく解説しています。ぜひ読んでみてくださいね 🌸
-                </p>
-                <a
-                  className="btn-blog"
-                  href="https://koyuki-life.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  詳しくはブログへ
-                  <span className="btn-blog-sub">koyuki-life.com</span>
-                </a>
-              </div>
-            </div>
-          )}
-
-          {/* フッター */}
-          <div className="footer">
-            <p>© 2025 koyuki-life.com</p>
-            <p style={{marginTop:'4px'}}>
-              ※ 本ツールの計算結果はあくまで目安です。<br />
-              正確な老後設計は、ファイナンシャルプランナーにご相談ください。
-            </p>
+          <div class="options">
+            <button class="option-btn" onclick="selectOption(1,'20代')">20代</button>
+            <button class="option-btn" onclick="selectOption(1,'30代')">30代</button>
+            <button class="option-btn" onclick="selectOption(1,'40代')">40代</button>
+            <button class="option-btn" onclick="selectOption(1,'50代')">50代</button>
+            <button class="option-btn" onclick="selectOption(1,'60代')">60代</button>
           </div>
         </div>
-      );
-    }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
+        <!-- Q2 -->
+        <div class="question" data-q="2">
+          <div class="question-label">
+            <span class="question-num">2</span>
+            毎月の余裕資金（積立に使えるお金）は？
+          </div>
+          <div class="options">
+            <button class="option-btn" onclick="selectOption(2,'1万円未満')">1万円未満</button>
+            <button class="option-btn" onclick="selectOption(2,'1〜3万円')">1〜3万円</button>
+            <button class="option-btn" onclick="selectOption(2,'3〜5万円')">3〜5万円</button>
+            <button class="option-btn" onclick="selectOption(2,'5万円以上')">5万円以上</button>
+          </div>
+        </div>
+
+        <!-- Q3 -->
+        <div class="question" data-q="3">
+          <div class="question-label">
+            <span class="question-num">3</span>
+            投資の経験はありますか？
+          </div>
+          <div class="options">
+            <button class="option-btn" onclick="selectOption(3,'まったくない')">まったくない</button>
+            <button class="option-btn" onclick="selectOption(3,'少しある')">少しある</button>
+            <button class="option-btn" onclick="selectOption(3,'経験豊富')">経験豊富</button>
+          </div>
+        </div>
+
+        <!-- Q4 -->
+        <div class="question" data-q="4">
+          <div class="question-label">
+            <span class="question-num">4</span>
+            リスクへの考え方は？
+          </div>
+          <div class="options">
+            <button class="option-btn" onclick="selectOption(4,'安全重視')">安全重視</button>
+            <button class="option-btn" onclick="selectOption(4,'バランス型')">バランス型</button>
+            <button class="option-btn" onclick="selectOption(4,'積極運用')">積極運用</button>
+          </div>
+        </div>
+
+        <!-- Q5 -->
+        <div class="question" data-q="5">
+          <div class="question-label">
+            <span class="question-num">5</span>
+            投資の目的は？
+          </div>
+          <div class="options">
+            <button class="option-btn" onclick="selectOption(5,'老後資金')">老後資金</button>
+            <button class="option-btn" onclick="selectOption(5,'子供の教育費')">子供の教育費</button>
+            <button class="option-btn" onclick="selectOption(5,'資産を増やしたい')">資産を増やしたい</button>
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="runDiagnosis()" id="diagnose-btn" style="margin-top:8px;">
+          ✨ 診断する
+        </button>
+      </div>
+    </div>
+
+    <!-- 診断結果 -->
+    <div id="quiz-result" class="hidden fade-in">
+      <div class="card">
+        <h2>診断結果</h2>
+
+        <div style="text-align:center;margin-bottom:20px;">
+          <p style="font-size:13px;color:var(--text-light);margin-bottom:8px;">あなたに合ったNISAタイプ</p>
+          <div class="result-badge pulse" id="result-type">―</div>
+        </div>
+
+        <div class="result-card">
+          <div class="result-item">
+            <span class="result-item-label">💰 積立金額</span>
+            <span class="result-item-value" id="result-amount">―</span>
+          </div>
+          <div class="result-item">
+            <span class="result-item-label">📈 ファンド</span>
+            <span class="result-item-value" id="result-fund">―</span>
+          </div>
+          <div class="result-item">
+            <span class="result-item-label">🎯 戦略</span>
+            <span class="result-item-value" id="result-strategy">―</span>
+          </div>
+        </div>
+
+        <div class="advice-box">
+          <div class="speech-bubble">
+            <div class="koyuki-icon">👩</div>
+            <div id="result-advice">―</div>
+          </div>
+        </div>
+
+        <div style="text-align:center;margin-top:20px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn-secondary" onclick="resetDiagnosis()">🔄 もう一度診断する</button>
+          <button class="btn-secondary" onclick="switchTab('lifeplan')">📊 ライフプランも試す</button>
+        </div>
+      </div>
+
+      <div class="disclaimer">
+        ※この診断はあくまで参考情報です。実際の投資はご自身の判断と責任において行ってください。投資には元本割れのリスクがあります。
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ========== ライフプランシート ========== -->
+  <section id="section-lifeplan" class="section">
+
+    <div class="card fade-in">
+      <h2>ライフプランシート</h2>
+      <p style="font-size:13px;color:var(--text-light);margin-bottom:20px;">将来の資産をシミュレーションしましょう📊</p>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">現在の年齢</label>
+          <div class="input-unit">
+            <input class="form-input" id="lp-age" type="number" value="50" min="20" max="69" placeholder="50">
+            <span class="unit-text">歳</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">目標年齢</label>
+          <select class="form-input" id="lp-target-age">
+            <option value="60">60歳</option>
+            <option value="65" selected>65歳</option>
+            <option value="70">70歳</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">現在の貯蓄額</label>
+        <div class="input-unit">
+          <input class="form-input" id="lp-savings" type="number" value="300" min="0" placeholder="300">
+          <span class="unit-text">万円</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">毎月の収入</label>
+          <div class="input-unit">
+            <input class="form-input" id="lp-income" type="number" value="25" min="0" placeholder="25">
+            <span class="unit-text">万円</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">毎月の支出</label>
+          <div class="input-unit">
+            <input class="form-input" id="lp-expense" type="number" value="20" min="0" placeholder="20">
+            <span class="unit-text">万円</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">毎月のNISA積立額</label>
+        <div class="input-unit">
+          <input class="form-input" id="lp-nisa" type="number" value="3" min="0" placeholder="3">
+          <span class="unit-text">万円</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">想定リターン（年率）</label>
+        <select class="form-input" id="lp-return">
+          <option value="3">3%（安全重視）</option>
+          <option value="5" selected>5%（バランス型）</option>
+          <option value="7">7%（積極運用）</option>
+        </select>
+      </div>
+
+      <button class="btn-primary" onclick="calcLifePlan()">
+        📊 シミュレーション開始
+      </button>
+    </div>
+
+    <!-- 結果エリア -->
+    <div id="lp-result" class="hidden fade-in">
+
+      <!-- 目標年齢の資産 -->
+      <div class="big-result" id="lp-big-result">
+        <div class="label" id="lp-result-label">65歳時点の予想資産額</div>
+        <div class="amount"><span id="lp-result-amount">―</span><span class="unit">万円</span></div>
+        <div class="achievement" id="lp-achievement">―</div>
+      </div>
+
+      <!-- 内訳 -->
+      <div class="card" style="margin-bottom:20px;">
+        <h2>資産内訳（目標時点）</h2>
+        <div class="result-item">
+          <span class="result-item-label">💴 貯蓄の合計</span>
+          <span class="result-item-value" id="lp-total-savings">―</span>
+        </div>
+        <div class="result-item">
+          <span class="result-item-label">📈 NISA資産</span>
+          <span class="result-item-value" id="lp-nisa-total">―</span>
+        </div>
+        <div class="result-item">
+          <span class="result-item-label">📅 積立年数</span>
+          <span class="result-item-value" id="lp-years">―</span>
+        </div>
+      </div>
+
+      <!-- グラフ -->
+      <div class="chart-wrapper">
+        <div class="chart-title">年齢別 資産推移グラフ</div>
+        <div class="chart-container">
+          <canvas id="assetChart"></canvas>
+        </div>
+      </div>
+
+      <!-- アドバイス -->
+      <div class="advice-box" id="lp-advice-box">
+        <div class="speech-bubble">
+          <div class="koyuki-icon">🐱</div>
+          <div id="lp-advice">―</div>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-top:20px;">
+        <button class="btn-secondary" onclick="resetLifePlan()">🔄 再計算する</button>
+      </div>
+
+      <div class="disclaimer" style="margin-top:16px;">
+        ※このシミュレーションは概算です。実際の資産額は市場の変動や税制の変更等により異なります。投資には元本割れリスクがあります。
+      </div>
+    </div>
+
+  </section>
+
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <p>🐱 Cookie &amp; 👩 Koyuki</p>
+  <p><a href="https://koyuki-life.com" target="_blank" rel="noopener">koyuki-life.com</a></p>
+  <p style="margin-top:8px;font-size:11px;">50代女性のリアルな暮らしを発信中💕</p>
+</footer>
+
+<script>
+// ===== TAB SWITCH =====
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', (i === 0 && tab === 'diagnosis') || (i === 1 && tab === 'lifeplan'));
+  });
+  document.getElementById('section-diagnosis').classList.toggle('active', tab === 'diagnosis');
+  document.getElementById('section-lifeplan').classList.toggle('active', tab === 'lifeplan');
+}
+
+// ===== QUIZ =====
+const answers = {};
+
+function selectOption(q, val) {
+  answers[q] = val;
+  const question = document.querySelector(`.question[data-q="${q}"]`);
+  question.querySelectorAll('.option-btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.textContent === val);
+  });
+  const answered = Object.keys(answers).length;
+  document.getElementById('quiz-progress').style.width = (answered / 5 * 100) + '%';
+}
+
+function runDiagnosis() {
+  if (Object.keys(answers).length < 5) {
+    alert('すべての質問に答えてください🌸');
+    return;
+  }
+
+  const age = answers[1];
+  const money = answers[2];
+  const exp = answers[3];
+  const risk = answers[4];
+  const goal = answers[5];
+
+  let type, amount, fund, strategy, advice;
+
+  // NISAタイプ判定
+  const isAggressive = risk === '積極運用' && (exp === '経験豊富' || exp === '少しある');
+  const isSafe = risk === '安全重視' || exp === 'まったくない';
+
+  if (isSafe) {
+    type = 'つみたて投資枠';
+  } else if (isAggressive && money === '5万円以上') {
+    type = 'つみたて投資枠＋成長投資枠';
+  } else {
+    type = 'つみたて投資枠';
+  }
+
+  // 月額積立
+  if (money === '1万円未満') amount = '月3,000〜5,000円から';
+  else if (money === '1〜3万円') amount = '月1〜3万円';
+  else if (money === '3〜5万円') amount = '月3万円（余裕があれば5万円）';
+  else amount = '月5万円（年間最大120万円まで可）';
+
+  // ファンドタイプ
+  if (isSafe) {
+    fund = 'バランス型ファンド（株式＋債券）\n例：eMAXIS Slimバランス(8資産均等型)';
+  } else if (risk === 'バランス型') {
+    fund = '全世界株式インデックス（オルカン）\n例：eMAXIS Slim全世界株式(オール・カントリー)';
+  } else {
+    fund = '全世界株式＋米国株式の組み合わせ\n例：オルカン＋S&P500を半々で';
+  }
+
+  // 戦略
+  const ageMap = { '20代': '40年', '30代': '30年', '40代': '20年', '50代': '10〜15年', '60代': '5〜10年' };
+  const years = ageMap[age] || '10年';
+  if (goal === '老後資金') {
+    strategy = `${years}間の長期積立で老後資金を形成。ドルコスト平均法で価格変動リスクを分散。`;
+  } else if (goal === '子供の教育費') {
+    strategy = `短〜中期（5〜10年）での資産形成。目標時期が近い場合は債券比率を高めに。`;
+  } else {
+    strategy = `${years}間の積立を軸に、余剰資金で成長投資枠も活用。配当・分配金も視野に。`;
+  }
+
+  // アドバイス（50代向け温かいトーン）
+  const advices = {
+    '20代': `まだまだ時間があります！少額でもコツコツ続けることが最大の武器💪 まずは月1,000円からでも始めてみましょう。20代でNISAを始めるのは本当に素晴らしい選択です✨`,
+    '30代': `30代は家族の状況も変わる時期。無理のない金額で継続することが大切です。まずは「やめない」ことを目標にしましょう🌸`,
+    '40代': `40代から始めても十分間に合います！20年の複利効果は想像以上に大きいです。お金に働いてもらいながら、老後の準備を始めましょう💕`,
+    '50代': `50代からでも遅くありません！NISAの非課税メリットは今からでも十分活かせます。焦らず、自分のペースで始めていきましょうね🌸 一緒に老後を豊かにしていきましょう💕`,
+    '60代': `60代からでも「守りながら増やす」投資は有効です。退職金や貯蓄の一部をNISAで運用することで、資産の目減りを防げます。無理のない範囲で、まずは一歩踏み出してみましょう🌸`,
+  };
+  advice = advices[age] || advices['50代'];
+
+  document.getElementById('result-type').textContent = type;
+  document.getElementById('result-amount').textContent = amount;
+  document.getElementById('result-fund').innerHTML = fund.replace('\n', '<br>');
+  document.getElementById('result-strategy').textContent = strategy;
+  document.getElementById('result-advice').textContent = advice;
+
+  document.getElementById('quiz-form').classList.add('hidden');
+  document.getElementById('quiz-result').classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function resetDiagnosis() {
+  Object.keys(answers).forEach(k => delete answers[k]);
+  document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('quiz-progress').style.width = '0%';
+  document.getElementById('quiz-result').classList.add('hidden');
+  document.getElementById('quiz-form').classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===== LIFE PLAN =====
+let chartInstance = null;
+
+function calcLifePlan() {
+  const age = parseInt(document.getElementById('lp-age').value) || 50;
+  const targetAge = parseInt(document.getElementById('lp-target-age').value) || 65;
+  const savings = parseFloat(document.getElementById('lp-savings').value) || 0;
+  const income = parseFloat(document.getElementById('lp-income').value) || 0;
+  const expense = parseFloat(document.getElementById('lp-expense').value) || 0;
+  const nisaMonthly = parseFloat(document.getElementById('lp-nisa').value) || 0;
+  const returnRate = parseFloat(document.getElementById('lp-return').value) / 100 || 0.05;
+
+  if (targetAge <= age) {
+    alert('目標年齢は現在の年齢より大きく設定してください。');
+    return;
+  }
+
+  const years = targetAge - age;
+  const monthlySaving = income - expense - nisaMonthly;
+  const annualSaving = monthlySaving * 12;
+  const annualNisa = nisaMonthly * 12;
+
+  // 年ごとのシミュレーション
+  const labels = [];
+  const totalData = [];
+  const savingsData = [];
+  const nisaData = [];
+
+  let currentSavings = savings;
+  let nisaTotal = 0;
+
+  for (let y = 0; y <= years; y++) {
+    const currentAge = age + y;
+    labels.push(`${currentAge}歳`);
+    savingsData.push(Math.round(currentSavings * 10) / 10);
+    nisaData.push(Math.round(nisaTotal * 10) / 10);
+    totalData.push(Math.round((currentSavings + nisaTotal) * 10) / 10);
+
+    if (y < years) {
+      currentSavings += annualSaving;
+      nisaTotal = (nisaTotal + annualNisa) * (1 + returnRate);
+    }
+  }
+
+  const finalTotal = totalData[totalData.length - 1];
+  const finalSavings = savingsData[savingsData.length - 1];
+  const finalNisa = nisaData[nisaData.length - 1];
+  const reached2000 = finalTotal >= 2000;
+
+  // 表示更新
+  document.getElementById('lp-result-label').textContent = `${targetAge}歳時点の予想資産額`;
+  document.getElementById('lp-result-amount').textContent = Math.round(finalTotal).toLocaleString();
+  document.getElementById('lp-total-savings').textContent = `約${Math.round(finalSavings).toLocaleString()}万円`;
+  document.getElementById('lp-nisa-total').textContent = `約${Math.round(finalNisa).toLocaleString()}万円`;
+  document.getElementById('lp-years').textContent = `${years}年間`;
+
+  const achEl = document.getElementById('lp-achievement');
+  if (reached2000) {
+    achEl.textContent = '🎉 老後2,000万円 達成見込み！';
+    achEl.className = 'achievement ok';
+  } else {
+    const gap = Math.round(2000 - finalTotal);
+    achEl.textContent = `⚠️ 老後2,000万円まであと${gap.toLocaleString()}万円`;
+    achEl.className = 'achievement ng';
+  }
+
+  // アドバイス
+  let lpAdvice = '';
+  if (reached2000) {
+    lpAdvice = `すばらしい！このペースで積み立てを続ければ、${targetAge}歳時点で${Math.round(finalTotal).toLocaleString()}万円の資産が見込めます🎉 老後2,000万円問題もクリア！このまま無理なく続けていきましょう💕`;
+  } else {
+    const shortfall = 2000 - finalTotal;
+    const extraMonthly = Math.ceil(shortfall / years / 12 / (((1 + returnRate) ** years - 1) / returnRate));
+    lpAdvice = `目標まであと少し！月々の積立を${extraMonthly > 0 ? '約' + Math.round(extraMonthly).toLocaleString() + '万円増やす' : 'もう少し増やす'}か、支出を見直すことで達成に近づけます。焦らず、できることから一歩ずつ進めましょうね🌸`;
+  }
+  document.getElementById('lp-advice').textContent = lpAdvice;
+
+  // グラフ描画
+  if (chartInstance) {
+    chartInstance.destroy();
+    chartInstance = null;
+  }
+
+  const ctx = document.getElementById('assetChart').getContext('2d');
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '貯蓄',
+          data: savingsData,
+          backgroundColor: 'rgba(248,187,217,0.8)',
+          borderColor: '#F48FB1',
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+        {
+          label: 'NISA資産',
+          data: nisaData,
+          backgroundColor: 'rgba(233,30,140,0.7)',
+          borderColor: '#C2185B',
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+        {
+          label: '老後2,000万円ライン',
+          data: new Array(labels.length).fill(2000),
+          type: 'line',
+          borderColor: '#FF6F00',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: {
+            font: { size: 11 },
+            color: '#7B4F6E',
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${Math.round(ctx.parsed.y).toLocaleString()}万円`
+          }
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          ticks: { font: { size: 10 }, color: '#A07090' },
+          grid: { display: false }
+        },
+        y: {
+          stacked: true,
+          ticks: {
+            font: { size: 10 }, color: '#A07090',
+            callback: v => v.toLocaleString() + '万'
+          },
+          grid: { color: 'rgba(248,187,217,0.3)' }
+        }
+      }
+    }
+  });
+
+  document.getElementById('lp-result').classList.remove('hidden');
+  document.getElementById('lp-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function resetLifePlan() {
+  document.getElementById('lp-result').classList.add('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
 </body>
 </html>
