@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clara — 投稿案メーカー</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📷</text></svg>">
+<style>
+  :root {
+    --bg: #FBF7F4;
+    --card: #FFFFFF;
+    --ink: #2E2A33;
+    --ink-soft: #6E6675;
+    --line: #E8DFD8;
+    --accent: #C2185B;
+    --accent-soft: #FCE4EC;
+    --ok: #2E7D5B;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+    line-height: 1.75;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+  header { margin-bottom: 32px; }
+  h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: .02em; }
+  .sub { color: var(--ink-soft); font-size: 14px; margin: 0; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+  .hint { color: var(--ink-soft); font-size: 13px; margin: 0 0 10px; }
+  textarea, input[type="text"], input[type="password"] {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font: inherit;
+    font-size: 15px;
+    background: #fff;
+    color: var(--ink);
+    resize: vertical;
+  }
+  textarea:focus, input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .field { margin-bottom: 18px; }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .row .field { flex: 1 1 240px; margin-bottom: 0; }
+
+  button {
+    font: inherit;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    padding: 13px 26px;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+  }
+  button:hover { filter: brightness(1.06); }
+  button:disabled { opacity: .5; cursor: default; filter: none; }
+  button.ghost {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--line);
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .msg { padding: 12px 16px; border-radius: 10px; font-size: 14px; margin-top: 16px; }
+  .msg.error { background: #FDECEE; color: #A8202F; }
+  .msg.info { background: var(--accent-soft); color: var(--accent); }
+  .hidden { display: none; }
+
+  .post { border-top: 1px solid var(--line); padding-top: 20px; margin-top: 20px; }
+  .post:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+  .tag {
+    display: inline-block; background: var(--accent-soft); color: var(--accent);
+    font-size: 12px; font-weight: 600; border-radius: 999px; padding: 3px 12px; margin-bottom: 10px;
+  }
+  .post h3 { font-size: 17px; margin: 0 0 4px; }
+  .concept { color: var(--ink-soft); font-size: 14px; margin: 0 0 16px; }
+  .block { margin-bottom: 16px; }
+  .block-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .block-title { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+  pre {
+    margin: 0; padding: 14px 16px; background: #FAF7F5; border: 1px solid var(--line);
+    border-radius: 10px; white-space: pre-wrap; word-break: break-word;
+    font: inherit; font-size: 14.5px;
+  }
+  pre.en { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; color: var(--ink-soft); }
+  .meta { font-size: 13px; color: var(--ink-soft); }
+  .spinner {
+    display: inline-block; width: 15px; height: 15px; margin-right: 8px; vertical-align: -2px;
+    border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Clara — 投稿案メーカー</h1>
+    <p class="sub">お店やサービスの説明を貼るだけで、Instagram の投稿案を3パターン作ります。</p>
+  </header>
+
+  <!-- 初回だけ表示するAPIキー登録 -->
+  <section id="setup" class="card hidden">
+    <label for="apikey">最初に1回だけ：APIキーの登録</label>
+    <p class="hint">
+      文章を作るのに Anthropic の API を使います。
+      <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>
+      でキーを作って、貼り付けてください。（<code>sk-ant-</code> で始まる文字列です）
+    </p>
+    <div class="field">
+      <input type="password" id="apikey" placeholder="sk-ant-..." autocomplete="off">
+    </div>
+    <button id="saveKey">保存する</button>
+    <div id="setupMsg" class="msg hidden"></div>
+  </section>
+
+  <!-- メインの入力フォーム -->
+  <section id="form" class="card hidden">
+    <div class="field">
+      <label for="brief">お店・サービスの説明</label>
+      <p class="hint">
+        できるだけ具体的に書くほど、投稿案も具体的になります。<br>
+        例：東京・蔵前のシングルオリジン豆専門の自家焙煎ロースタリー。週替わりで3種類の豆を店頭で焙煎している。
+      </p>
+      <textarea id="brief" rows="5" placeholder="ここに説明を書くか、貼り付けてください"></textarea>
+    </div>
+
+    <div class="row" style="margin-bottom:18px;">
+      <div class="field">
+        <label for="tone">雰囲気（任意）</label>
+        <input type="text" id="tone" placeholder="例：落ち着いた大人向け">
+      </div>
+      <div class="field">
+        <label for="notes">補足（任意）</label>
+        <input type="text" id="notes" placeholder="例：営業時間、今月のキャンペーン">
+      </div>
+    </div>
+
+    <button id="run">投稿案を作る</button>
+    <span class="meta" id="runHint" style="margin-left:12px;">30秒ほどかかります</span>
+    <div id="formMsg" class="msg hidden"></div>
+  </section>
+
+  <section id="results"></section>
+
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+function show(el) { el.classList.remove("hidden"); }
+function hide(el) { el.classList.add("hidden"); }
+
+function message(el, text, kind = "error") {
+  el.className = "msg " + kind;
+  el.textContent = text;
+  show(el);
+}
+
+async function api(path, options) {
+  const res = await fetch(path, options);
+  const data = await res.json().catch(() => ({ error: "サーバーからの応答を読み取れませんでした。" }));
+  if (!res.ok) throw new Error(data.error || "エラーが発生しました。");
+  return data;
+}
+
+// --- 起動時：APIキーがあるか確認 ---
+(async () => {
+  try {
+    const { hasKey } = await api("/api/status");
+    show(hasKey ? $("form") : $("setup"));
+  } catch {
+    show($("setup"));
+  }
+})();
+
+// --- APIキーの保存 ---
+$("saveKey").addEventListener("click", async () => {
+  const key = $("apikey").value.trim();
+  const button = $("saveKey");
+  button.disabled = true;
+  try {
+    await api("/api/key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key }),
+    });
+    hide($("setup"));
+    show($("form"));
+    $("brief").focus();
+  } catch (error) {
+    message($("setupMsg"), error.message);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+// --- 投稿案の生成 ---
+$("run").addEventListener("click", async () => {
+  const brief = $("brief").value.trim();
+  const button = $("run");
+  hide($("formMsg"));
+
+  if (!brief) {
+    message($("formMsg"), "お店・サービスの説明を入力してください。");
+    return;
+  }
+
+  button.disabled = true;
+  button.innerHTML = '<span class="spinner"></span>作成中…';
+  $("results").innerHTML = "";
+
+  try {
+    const data = await api("/api/plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brief, tone: $("tone").value, notes: $("notes").value }),
+    });
+    render(data);
+  } catch (error) {
+    message($("formMsg"), error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "投稿案を作る";
+  }
+});
+
+// --- 結果の描画 ---
+function copyBlock(title, text, mono = false) {
+  const block = document.createElement("div");
+  block.className = "block";
+
+  const head = document.createElement("div");
+  head.className = "block-head";
+
+  const label = document.createElement("span");
+  label.className = "block-title";
+  label.textContent = title;
+
+  const button = document.createElement("button");
+  button.className = "ghost";
+  button.textContent = "コピー";
+  button.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      button.textContent = "コピーしました";
+      setTimeout(() => { button.textContent = "コピー"; }, 1600);
+    } catch {
+      button.textContent = "コピーできません";
+    }
+  });
+
+  head.append(label, button);
+
+  const body = document.createElement("pre");
+  if (mono) body.className = "en";
+  body.textContent = text;
+
+  block.append(head, body);
+  return block;
+}
+
+function render({ plan, savedTo }) {
+  const results = $("results");
+  results.innerHTML = "";
+
+  for (const post of plan.posts) {
+    const card = document.createElement("section");
+    card.className = "card post";
+
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = post.angle;
+
+    const title = document.createElement("h3");
+    title.textContent = post.hook;
+
+    const concept = document.createElement("p");
+    concept.className = "concept";
+    concept.textContent = post.concept;
+
+    card.append(tag, title, concept);
+    card.append(copyBlock("キャプション", post.caption));
+    card.append(copyBlock("ハッシュタグ", post.hashtags.join(" ")));
+    card.append(copyBlock("画像を作るための指示文（英語）", post.imagePrompt, true));
+
+    const meta = document.createElement("p");
+    meta.className = "meta";
+    meta.textContent =
+      `動画にする場合：${post.video.durationSec}秒 ／ テロップ「${post.video.textOverlay}」　`
+      + `｜　おすすめ投稿時間：${post.bestPostTime}`;
+    card.append(meta);
+
+    results.append(card);
+  }
+
+  const footer = document.createElement("p");
+  footer.className = "meta";
+  footer.textContent = `この内容はパソコンにも保存されました：${savedTo.dir}`;
+  results.append(footer);
+
+  results.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+</script>
+</body>
+</html>

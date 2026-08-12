@@ -2,13 +2,15 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import Anthropic from "@anthropic-ai/sdk";
-
 import { loadEnv, PROJECT_ROOT, DEFAULT_EFFORT, DEFAULT_MODEL } from "./src/config.js";
 import { buildUserPrompt, generatePlan } from "./src/planner.js";
 import { createRunDir, writePlanFiles } from "./src/output.js";
+import { describeError } from "./src/errors.js";
 
-const USAGE = `Clara MVP — ステップ①: 企画・キャプション生成
+const USAGE = `Clara MVP — ステップ①: 企画・キャプション生成（コマンド版）
+
+ふだんは start.bat（Mac/Linux は node server.js）でブラウザから使ってください。
+このコマンド版は、自動実行やバッチ処理に組み込むとき用です。
 
 使い方:
   node clara.js plan --brief "東京のシングルオリジン豆専門の自家焙煎ロースタリー"
@@ -102,22 +104,6 @@ async function runPlan(args) {
   console.log(`保存先:\n  ${jsonPath}\n  ${mdPath}`);
 }
 
-function reportError(error) {
-  if (error instanceof Anthropic.AuthenticationError) {
-    console.error("エラー: APIキーが無効です。ANTHROPIC_API_KEY を確認してください。");
-  } else if (error instanceof Anthropic.NotFoundError) {
-    console.error(`エラー: モデルIDが見つかりません。--model の指定を確認してください。\n${error.message}`);
-  } else if (error instanceof Anthropic.RateLimitError) {
-    console.error("エラー: レート制限に達しました。しばらく待って再実行してください。");
-  } else if (error instanceof Anthropic.APIConnectionError) {
-    console.error("エラー: APIに接続できませんでした。ネットワークを確認してください。");
-  } else if (error instanceof Anthropic.APIError) {
-    console.error(`APIエラー (${error.status}): ${error.message}`);
-  } else {
-    console.error(`エラー: ${error.message}`);
-  }
-}
-
 async function main() {
   loadEnv();
 
@@ -143,6 +129,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  reportError(error);
+  console.error(`エラー: ${describeError(error)}`);
   process.exitCode = 1;
 });

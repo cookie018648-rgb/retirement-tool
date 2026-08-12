@@ -1,156 +1,127 @@
-# Clara MVP — SNS自動投稿パイプライン
+# Clara MVP — 投稿案メーカー
 
-ビジネス説明文から Instagram 投稿を自動生成するパイプラインの最小動作版。
-`vjl-pipeline.js` 的な「1コマンドで完結する Node スクリプト」として組んでいます。
-
-現在実装済みなのは **ステップ①（企画・キャプション生成）** のみ。
-②以降は「拡張の進め方」に接続方法を書いてあります。
-
-```
-① 企画・キャプション生成   Claude API        ← 実装済み
-② 画像生成                 gpt-image-1        ← 未実装
-③ 動画加工                 ffmpeg             ← 未実装
-④ 投稿                     Instagram Graph API ← 未実装
-```
+お店やサービスの説明文を貼ると、Instagram の投稿案（キャプション・ハッシュタグ・画像用の指示文）を
+3パターン作るツールです。ブラウザの画面から使います。
 
 ---
 
-## セットアップ
+## 使い方（3ステップ）
 
-```bash
-cd clara
-npm install
-cp .env.example .env      # Windows: copy .env.example .env
-# .env を開いて ANTHROPIC_API_KEY を入れる
-```
+### 1. 準備（最初の1回だけ）
 
-Node.js 18.17 以上が必要です（`node -v` で確認）。
+- **Node.js を入れる** — [nodejs.org/ja](https://nodejs.org/ja) から「LTS」版をダウンロードして、
+  そのままインストール。設定を変える必要はありません。
+- **APIキーを取る** — [console.anthropic.com](https://console.anthropic.com/settings/keys) で
+  アカウントを作り、キーを1つ発行してコピーしておきます（`sk-ant-` で始まる長い文字列）。
+  文章を作るのに使う鍵で、料金はここから引き落とされます。
 
-## 使い方
+### 2. 起動する
 
-```bash
-# 基本
-node clara.js plan --brief "東京・蔵前のシングルオリジン豆専門の自家焙煎ロースタリー"
+`clara` フォルダの中の **`start.bat` をダブルクリック**。
 
-# 説明文が長いときはファイルで渡す
-node clara.js plan --brief-file ./brief.txt --tone "落ち着いた大人向け"
+- 黒い画面が出て、少しするとブラウザが自動で開きます（初回だけ1〜2分かかります）
+- 開かないときは、黒い画面に出ている `http://localhost:5178` をブラウザに貼ってください
+- Mac / Linux の場合は、ターミナルで `cd clara` → `npm install` → `node server.js`
 
-# APIを呼ばずにプロンプトだけ確認
-node clara.js plan --brief "..." --dry-run
+### 3. 使う
 
-# ヘルプ
-node clara.js help
-```
+1. 最初の1回だけ、APIキーを貼って「保存する」
+2. お店の説明を書いて「投稿案を作る」
+3. 30秒ほどで3案が出ます。「コピー」ボタンでそのまま Instagram に貼れます
 
-主なオプション:
+閉じるときは、黒い画面を閉じるだけでOKです。
 
-| オプション | 説明 |
+---
+
+## コツ
+
+**説明文は具体的に書くほど、投稿案も具体的になります。**
+
+| いまいち | よい |
 | --- | --- |
-| `--brief <text>` / `--brief-file <path>` | ビジネス説明文（どちらか必須） |
-| `--count <n>` | 投稿案の件数（既定 3、最大 3） |
-| `--tone <text>` | トーン指定 |
-| `--notes <text>` | 住所・営業時間・キャンペーンなどの補足 |
-| `--effort <level>` | `low` / `medium` / `high` / `xhigh` / `max`（既定 `medium`） |
-| `--model <id>` | 既定は `claude-opus-5` |
-| `--out <dir>` | 出力先の親ディレクトリ（既定 `./output`） |
-| `--dry-run` | API を呼ばずプロンプトだけ表示 |
+| コーヒー屋です | 東京・蔵前のシングルオリジン豆専門の自家焙煎ロースタリー。週替わりで3種類の豆を店頭で焙煎している |
 
-## 出力
+「補足」の欄に営業時間・今月のキャンペーン・こだわりの製法などを入れると、そこを拾って書きます。
+逆に、書いていない実績や受賞歴は勝手に作らないようにしてあるので、
+アピールしたいことは説明文か補足に入れてください。
 
-`output/20260812-143000/` のような実行ごとのフォルダに2ファイル。
+## 出てくるもの
 
-- **`plan.json`** — 後続ステップが読む正データ（スキーマ検証済み）
-- **`plan.md`** — 人が読む用。キャプションと画像プロンプトをコピペしやすい形
+各案につき4点セット:
 
-`plan.json` の形:
+- **キャプション** — Instagram の本文。ハッシュタグは別枠なので、貼る順番を自由に決められます
+- **ハッシュタグ** — 10〜15個
+- **画像を作るための指示文（英語）** — ステップ②で画像生成にそのまま渡す用。
+  いまの時点でも、ChatGPT や Midjourney にそのまま貼れば画像が作れます
+- **動画メモ** — 秒数とテロップ案。ステップ③の動画化で使います
 
-```jsonc
-{
-  "meta": { "model": "...", "usage": { ... }, "brief": "...", "userPrompt": "..." },
-  "plan": {
-    "businessProfile": { "summary", "category", "targetAudience", "brandTone", "keywords" },
-    "posts": [
-      {
-        "id": "post-1",
-        "angle": "共感・ストーリー",     // 3案で必ず切り口を変える
-        "concept": "...",
-        "hook": "1行目のフック",
-        "caption": "本文（ハッシュタグは含まない）",
-        "hashtags": ["#...", "..."],
-        "cta": "...",
-        "imagePrompt": "gpt-image-1 に渡す英語プロンプト",   // → ステップ②
-        "video": {
-          "motion": "ken_burns_in",     // → ステップ③ ffmpeg のプリセット名
-          "durationSec": 8,
-          "textOverlay": "焼き込むテロップ"
-        },
-        "bestPostTime": "平日 12:00〜13:00"
-      }
-    ]
-  }
-}
-```
+3案は切り口を変えてあります（共感・ストーリー／実用・ノウハウ／世界観・ビジュアル）。
 
-`angle` と `video.motion` は列挙値に固定しているので、後続ステップで `switch` を書けます。
-出力は Claude の Structured Outputs でスキーマ強制しているため、`JSON.parse` が失敗する・
-キーが欠けるといったことは起きません（プロンプト頼みのJSON生成との一番の違い）。
-
-## 設計メモ
-
-- **API呼び出しは1回**。3案をまとめて1レスポンスで作らせています。案ごとに呼ぶより
-  「切り口が被らない」制御がしやすく、コストも1/3。
-- **`imagePrompt` は英語**。gpt-image-1 に渡す前提で、文字・ロゴを描画しない指示を
-  システムプロンプト側で常に入れています。
-- **捏造の禁止**をシステムプロンプトで明示。説明文にない受賞歴・数値・所在地は書きません。
-  逆に言うと `--notes` で事実を渡すほど具体的な投稿案になります。
-- **依存は `@anthropic-ai/sdk` だけ**。`.env` の読み込みも自前の小さいパーサーで、
-  dotenv も入れていません。
-
-## 拡張の進め方（②〜④）
-
-すべて `plan.json` を入力にして、同じフォルダに成果物を足していく形を想定しています。
-
-### ② 画像生成 — `node clara.js image --run output/2026...`
-`posts[].imagePrompt` を gpt-image-1 に渡し、`images/post-1.png` として保存。
-既存の画像生成パイプラインをそのまま `src/image.js` に移植できます。
-Instagram のフィードは 1080x1350（4:5）、リールは 1080x1920（9:16）なので、
-動画に回す分は 9:16 で生成しておくと ③ でのクロップが不要になります。
-
-### ③ 動画加工 — `node clara.js video --run output/2026...`
-`video.motion` を ffmpeg のフィルタに対応させるだけの表引きにします。
-
-```js
-const MOTION_FILTERS = {
-  ken_burns_in:  "zoompan=z='min(zoom+0.0015,1.2)':d=DURATION:s=1080x1920",
-  ken_burns_out: "zoompan=z='if(lte(zoom,1.0),1.2,max(1.001,zoom-0.0015))':d=DURATION:s=1080x1920",
-  pan_left:      "zoompan=z=1.2:x='iw*0.2-on*0.3':d=DURATION:s=1080x1920",
-  pan_right:     "zoompan=z=1.2:x='on*0.3':d=DURATION:s=1080x1920",
-};
-```
-
-`textOverlay` は `drawtext` で焼き込み（日本語フォントの `fontfile` 指定が必要）。
-VJL/Shorts で使っている ffmpeg 処理をここに寄せます。
-
-### ④ 投稿 — `node clara.js post --run output/2026... --post post-1`
-Instagram Graph API（Account ID: `17841402134004209`）で
-
-1. `POST /{ig-user-id}/media` でコンテナ作成（`image_url` または `video_url` + `caption`）
-2. `POST /{ig-user-id}/media_publish` で公開
-
-の2段階。**注意点として、Graph API に「下書き保存」のエンドポイントはありません。**
-コンテナを作った時点では未公開ですが、これは下書きではなく一時的な入れ物で、
-アプリ上の下書きにも現れません（有効期限あり）。
-「確認してから出す」を実現するなら、
-`plan.json` に `approved: true` を書き込んでから `post` コマンドを実行する、という
-ローカルの承認フローを挟むのが現実的です。スケジューリングは `auto_post.js` の仕組みを流用。
-
-また、メディアは公開URLから取得される仕様なので、生成した画像・動画を
-どこかにホスティングする必要があります（S3 / Cloudflare R2 / 自サイトなど）。
+作った内容は `clara/output/` の中に日時ごとのフォルダで自動保存されます。
+`plan.md` が人間用、`plan.json` が後続ステップ用です。
 
 ---
 
-## 動作確認の状況
+## うまくいかないとき
 
-- `--dry-run`、ヘルプ、出力ファイル生成（モックデータ）までは実行して確認済み。
-- **API を実際に叩く経路は未検証**です（この作業環境に `ANTHROPIC_API_KEY` がないため）。
-  手元で `.env` を設定して 1 回流してみてください。エラーが出たらそのメッセージを共有いただければ直します。
+| 症状 | 対処 |
+| --- | --- |
+| `start.bat` を開いても何も起きない | Node.js が入っていない可能性大。黒い画面のメッセージを確認してください |
+| 「APIキーが正しくないようです」 | キーの前後に空白が混ざっているか、コピーが途中で切れています。もう一度貼り直してください |
+| 「APIの残高が不足」 | Anthropic の管理画面でクレジットを追加してください |
+| 「ポート 5178 はすでに使われています」 | 二重起動しています。開いている黒い画面を閉じてから、もう一度 |
+| ブラウザが開かない | `http://localhost:5178` を手で開いてください |
+
+---
+
+## この先の予定（②〜④）
+
+いまは①だけが動いています。②以降は `plan.json` を入力にして繋いでいく想定です。
+
+| | やること | 使うもの |
+| --- | --- | --- |
+| ① | 企画・キャプション生成 | Claude API ← **いまここ** |
+| ② | 画像生成 | gpt-image-1（`imagePrompt` をそのまま渡す） |
+| ③ | 動画加工 | ffmpeg（`video.motion` をフィルタに対応させるだけ） |
+| ④ | 投稿 | Instagram Graph API |
+
+**④について先にひとつ。** Instagram の API には「下書き保存」の機能がありません。
+なので「確認してから出す」を作るなら、この画面に “投稿する” ボタンを付けて、
+中身を見てから押す形にするのが現実的です。
+また、画像や動画はネット上のURLから読み込まれる仕様なので、
+どこかに置き場所（S3 / Cloudflare R2 など）を用意する必要があります。
+
+---
+
+## 開発者向けメモ
+
+<details>
+<summary>ファイル構成とコマンド版</summary>
+
+```
+clara/
+  start.bat          Windows用の起動ファイル
+  server.js          ローカルサーバー（127.0.0.1のみ）
+  public/index.html  画面
+  clara.js           コマンド版（自動実行に組み込むとき用）
+  src/
+    planner.js       Claude呼び出し。1リクエストで3案
+    schema.js        出力スキーマ。②〜④との接続点
+    output.js        plan.json / plan.md の書き出し
+    config.js        .env の読み書き
+    errors.js        エラーメッセージの日本語化
+```
+
+コマンド版:
+
+```bash
+node clara.js plan --brief "..." --tone "..." --notes "..."
+node clara.js plan --brief "..." --dry-run   # APIを呼ばずプロンプトだけ確認
+```
+
+- 出力は Claude の Structured Outputs でスキーマ強制しているので、JSONの欠損は起きません
+- `angle` と `video.motion` は列挙値に固定。後続ステップで `switch` が書けます
+- 依存は `@anthropic-ai/sdk` のみ。`.env` の読み込みも自前
+- APIキーは `.env` に保存され、`.gitignore` 済み
+
+</details>

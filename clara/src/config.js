@@ -30,6 +30,25 @@ export function loadEnv(envPath = path.join(projectRoot, ".env")) {
   }
 }
 
+/**
+ * 画面から入力されたAPIキーを .env に保存し、現在のプロセスにも反映する。
+ * 既存の ANTHROPIC_API_KEY 行があれば置き換える。
+ */
+export function saveApiKey(key, envPath = path.join(projectRoot, ".env")) {
+  const trimmed = key.trim();
+  const lines = fs.existsSync(envPath)
+    ? fs.readFileSync(envPath, "utf8").split(/\r?\n/)
+    : [];
+
+  const index = lines.findIndex((line) => line.trim().startsWith("ANTHROPIC_API_KEY="));
+  const entry = `ANTHROPIC_API_KEY=${trimmed}`;
+  if (index === -1) lines.push(entry);
+  else lines[index] = entry;
+
+  fs.writeFileSync(envPath, lines.join("\n").replace(/\n*$/, "\n"), "utf8");
+  process.env.ANTHROPIC_API_KEY = trimmed;
+}
+
 export const PROJECT_ROOT = projectRoot;
 export const DEFAULT_MODEL = "claude-opus-5";
 export const DEFAULT_EFFORT = "medium";
