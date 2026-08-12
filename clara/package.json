@@ -1,0 +1,19 @@
+{
+  "name": "clara-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SNS auto-post pipeline MVP (Clara-like): plan -> caption -> image -> video -> Instagram",
+  "type": "module",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "bin": {
+    "clara": "./clara.js"
+  },
+  "scripts": {
+    "plan": "node clara.js plan"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.116.0"
+  }
+}
