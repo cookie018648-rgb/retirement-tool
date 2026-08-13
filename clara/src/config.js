@@ -31,22 +31,28 @@ export function loadEnv(envPath = path.join(projectRoot, ".env")) {
 }
 
 /**
- * 画面から入力されたAPIキーを .env に保存し、現在のプロセスにも反映する。
- * 既存の ANTHROPIC_API_KEY 行があれば置き換える。
+ * 画面から入力された設定を .env に保存し、現在のプロセスにも反映する。
+ * 同じキーの行があれば置き換える。
  */
-export function saveApiKey(key, envPath = path.join(projectRoot, ".env")) {
-  const trimmed = key.trim();
+export function saveEnvValues(values, envPath = path.join(projectRoot, ".env")) {
   const lines = fs.existsSync(envPath)
     ? fs.readFileSync(envPath, "utf8").split(/\r?\n/)
     : [];
 
-  const index = lines.findIndex((line) => line.trim().startsWith("ANTHROPIC_API_KEY="));
-  const entry = `ANTHROPIC_API_KEY=${trimmed}`;
-  if (index === -1) lines.push(entry);
-  else lines[index] = entry;
+  for (const [key, rawValue] of Object.entries(values)) {
+    const value = String(rawValue).trim();
+    const entry = `${key}=${value}`;
+    const index = lines.findIndex((line) => line.trim().startsWith(`${key}=`));
+    if (index === -1) lines.push(entry);
+    else lines[index] = entry;
+    process.env[key] = value;
+  }
 
   fs.writeFileSync(envPath, lines.join("\n").replace(/\n*$/, "\n"), "utf8");
-  process.env.ANTHROPIC_API_KEY = trimmed;
+}
+
+export function saveApiKey(key, envPath = path.join(projectRoot, ".env")) {
+  saveEnvValues({ ANTHROPIC_API_KEY: key }, envPath);
 }
 
 export const PROJECT_ROOT = projectRoot;

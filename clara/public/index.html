@@ -98,6 +98,14 @@
   }
   pre.en { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; color: var(--ink-soft); }
   .meta { font-size: 13px; color: var(--ink-soft); }
+  .badge {
+    display: inline-block; background: #E6F4EC; color: var(--ok);
+    font-size: 12px; font-weight: 600; border-radius: 999px; padding: 3px 12px; margin-right: 8px;
+  }
+  .publish { border-top: 1px dashed var(--line); margin-top: 20px; padding-top: 18px; }
+  .publish textarea { margin-bottom: 10px; }
+  .publish input { margin-bottom: 12px; }
+  .publish .note { font-size: 13px; color: var(--ink-soft); margin: 0 0 10px; }
   .spinner {
     display: inline-block; width: 15px; height: 15px; margin-right: 8px; vertical-align: -2px;
     border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%;
@@ -128,6 +136,36 @@
     </div>
     <button id="saveKey">保存する</button>
     <div id="setupMsg" class="msg hidden"></div>
+  </section>
+
+  <!-- Instagram連携（任意）。設定すると各案から直接投稿できる -->
+  <section id="ig" class="card hidden">
+    <div id="igConnected" class="hidden">
+      <span class="badge">連携済み</span>
+      <b id="igName"></b>
+      <button class="ghost" id="igChange" style="margin-left:10px;">変更する</button>
+    </div>
+
+    <div id="igForm">
+      <label>Instagramへの自動投稿（任意）</label>
+      <p class="hint">
+        登録すると、作った投稿案をこの画面から直接Instagramに出せるようになります。
+        あとから設定してもかまいません。
+      </p>
+      <div class="row" style="margin-bottom:14px;">
+        <div class="field">
+          <label for="igUserId">InstagramユーザーID</label>
+          <input type="text" id="igUserId" placeholder="17841402134004209" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="igToken">アクセストークン</label>
+          <input type="password" id="igToken" placeholder="EAA..." autocomplete="off">
+        </div>
+      </div>
+      <button id="igSave">連携する</button>
+      <button class="ghost" id="igSkip" style="margin-left:8px;">あとで</button>
+      <div id="igMsg" class="msg hidden"></div>
+    </div>
   </section>
 
   <!-- メインの入力フォーム -->
@@ -189,15 +227,72 @@ async function api(path, options) {
   return data;
 }
 
+let igReady = false;
+
+function openMainScreen() {
+  show($("ig"));
+  show($("form"));
+  refreshInstagram();
+}
+
 // --- 起動時：APIキーがあるか確認 ---
 (async () => {
   try {
     const { hasKey } = await api("/api/status");
-    show(hasKey ? $("form") : $("setup"));
+    if (hasKey) openMainScreen();
+    else show($("setup"));
   } catch {
     show($("setup"));
   }
 })();
+
+// --- Instagram連携の状態を反映 ---
+async function refreshInstagram() {
+  try {
+    const data = await api("/api/instagram/status");
+    igReady = Boolean(data.configured);
+
+    if (igReady) {
+      $("igName").textContent = "@" + data.username;
+      show($("igConnected"));
+      hide($("igForm"));
+    } else {
+      hide($("igConnected"));
+      show($("igForm"));
+      if (data.savedButInvalid) message($("igMsg"), data.error);
+    }
+  } catch {
+    igReady = false;
+  }
+}
+
+$("igSave").addEventListener("click", async () => {
+  const button = $("igSave");
+  hide($("igMsg"));
+  button.disabled = true;
+  try {
+    const data = await api("/api/instagram/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: $("igUserId").value, token: $("igToken").value }),
+    });
+    igReady = true;
+    $("igName").textContent = "@" + data.username;
+    show($("igConnected"));
+    hide($("igForm"));
+  } catch (error) {
+    message($("igMsg"), error.message);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+$("igChange").addEventListener("click", () => {
+  hide($("igConnected"));
+  show($("igForm"));
+});
+
+$("igSkip").addEventListener("click", () => hide($("ig")));
 
 // --- APIキーの保存 ---
 $("saveKey").addEventListener("click", async () => {
@@ -211,7 +306,7 @@ $("saveKey").addEventListener("click", async () => {
       body: JSON.stringify({ key }),
     });
     hide($("setup"));
-    show($("form"));
+    openMainScreen();
     $("brief").focus();
   } catch (error) {
     message($("setupMsg"), error.message);
@@ -285,6 +380,85 @@ function copyBlock(title, text, mono = false) {
   return block;
 }
 
+/** 投稿ブロック。本文は編集できるようにして、押す前に必ず確認を挟む。 */
+function publishBlock(post) {
+  const wrap = document.createElement("div");
+  wrap.className = "publish";
+
+  const title = document.createElement("div");
+  title.className = "block-title";
+  title.style.marginBottom = "8px";
+  title.textContent = "Instagramに投稿する";
+  wrap.append(title);
+
+  if (!igReady) {
+    const note = document.createElement("p");
+    note.className = "note";
+    note.textContent =
+      "画面上部でInstagramを連携すると、ここから直接投稿できるようになります。";
+    wrap.append(note);
+    return wrap;
+  }
+
+  const note = document.createElement("p");
+  note.className = "note";
+  note.textContent = "本文はここで直せます。押すとすぐに公開されるので、内容を確認してから押してください。";
+
+  const caption = document.createElement("textarea");
+  caption.rows = 8;
+  caption.value = post.caption + "\n\n" + post.hashtags.join(" ");
+
+  const imageUrl = document.createElement("input");
+  imageUrl.type = "text";
+  imageUrl.placeholder = "画像のURL（https:// で始まる、誰でも開けるもの）";
+
+  const button = document.createElement("button");
+  button.textContent = "この内容で投稿する";
+
+  const msg = document.createElement("div");
+  msg.className = "msg hidden";
+
+  button.addEventListener("click", async () => {
+    hide(msg);
+    if (!confirm("Instagramに公開します。よろしいですか？\n\n公開後の取り消しはInstagramアプリから行ってください。")) {
+      return;
+    }
+
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner"></span>投稿中…';
+    try {
+      const data = await api("/api/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caption: caption.value, imageUrl: imageUrl.value }),
+      });
+      msg.className = "msg info";
+      msg.textContent = "投稿しました。";
+      if (data.permalink) {
+        const link = document.createElement("a");
+        link.href = data.permalink;
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.textContent = "　投稿を開く";
+        msg.append(link);
+      }
+      show(msg);
+      button.textContent = "投稿ずみ";
+      return;
+    } catch (error) {
+      message(msg, error.message);
+    } finally {
+      if (button.textContent !== "投稿ずみ") {
+        button.disabled = false;
+        button.textContent = "この内容で投稿する";
+      }
+    }
+  });
+
+  wrap.append(note, caption, imageUrl, button, msg);
+  return wrap;
+}
+
 function render({ plan, savedTo }) {
   const results = $("results");
   results.innerHTML = "";
@@ -315,6 +489,7 @@ function render({ plan, savedTo }) {
       `動画にする場合：${post.video.durationSec}秒 ／ テロップ「${post.video.textOverlay}」　`
       + `｜　おすすめ投稿時間：${post.bestPostTime}`;
     card.append(meta);
+    card.append(publishBlock(post));
 
     results.append(card);
   }

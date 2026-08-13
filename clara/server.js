@@ -8,10 +8,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 
-import { loadEnv, saveApiKey, PROJECT_ROOT } from "./src/config.js";
+import { loadEnv, saveApiKey, saveEnvValues, PROJECT_ROOT } from "./src/config.js";
 import { generatePlan } from "./src/planner.js";
 import { createRunDir, writePlanFiles } from "./src/output.js";
 import { describeError } from "./src/errors.js";
+import { publishImagePost, verifyAccount } from "./src/instagram.js";
 
 const PORT = Number(process.env.PORT) || 5178;
 const INDEX_PATH = path.join(PROJECT_ROOT, "public", "index.html");
@@ -94,6 +95,72 @@ async function handleKey(req, res) {
   sendJson(res, 200, { ok: true });
 }
 
+async function handleInstagramStatus(req, res) {
+  const userId = process.env.IG_USER_ID;
+  const token = process.env.IG_ACCESS_TOKEN;
+
+  if (!userId || !token) {
+    sendJson(res, 200, { configured: false });
+    return;
+  }
+
+  try {
+    const account = await verifyAccount({ userId, token });
+    sendJson(res, 200, { configured: true, username: account.username });
+  } catch (error) {
+    // 設定はあるが使えない状態（期限切れなど）。画面で登録し直せるようにする。
+    sendJson(res, 200, { configured: false, savedButInvalid: true, error: error.message });
+  }
+}
+
+async function handleInstagramSettings(req, res) {
+  const body = await readBody(req);
+  const userId = String(body.userId ?? "").trim();
+  const token = String(body.token ?? "").trim();
+
+  if (!/^\d+$/.test(userId)) {
+    sendJson(res, 400, { error: "InstagramのユーザーIDは数字だけの文字列です。確認してください。" });
+    return;
+  }
+  if (!token) {
+    sendJson(res, 400, { error: "アクセストークンを入力してください。" });
+    return;
+  }
+
+  // 保存する前に、実際に使えるトークンかを確かめる。
+  const account = await verifyAccount({ userId, token });
+  saveEnvValues({ IG_USER_ID: userId, IG_ACCESS_TOKEN: token });
+
+  sendJson(res, 200, { ok: true, username: account.username });
+}
+
+async function handlePublish(req, res) {
+  const body = await readBody(req);
+  const imageUrl = String(body.imageUrl ?? "").trim();
+  const caption = String(body.caption ?? "").trim();
+
+  const userId = process.env.IG_USER_ID;
+  const token = process.env.IG_ACCESS_TOKEN;
+
+  if (!userId || !token) {
+    sendJson(res, 400, { error: "Instagramの連携が未設定です。画面上部から登録してください。" });
+    return;
+  }
+  if (!/^https:\/\//i.test(imageUrl)) {
+    sendJson(res, 400, {
+      error: "画像のURLは https:// で始まる、誰でも開けるものを指定してください。",
+    });
+    return;
+  }
+  if (!caption) {
+    sendJson(res, 400, { error: "投稿本文が空です。" });
+    return;
+  }
+
+  const result = await publishImagePost({ userId, token, imageUrl, caption });
+  sendJson(res, 200, result);
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     if (req.method === "GET" && (req.url === "/" || req.url.startsWith("/?"))) {
@@ -112,6 +179,18 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "POST" && req.url === "/api/plan") {
       await handlePlan(req, res);
+      return;
+    }
+    if (req.method === "GET" && req.url === "/api/instagram/status") {
+      await handleInstagramStatus(req, res);
+      return;
+    }
+    if (req.method === "POST" && req.url === "/api/instagram/settings") {
+      await handleInstagramSettings(req, res);
+      return;
+    }
+    if (req.method === "POST" && req.url === "/api/publish") {
+      await handlePublish(req, res);
       return;
     }
     sendJson(res, 404, { error: "not found" });
