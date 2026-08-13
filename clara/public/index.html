@@ -174,7 +174,16 @@ function message(el, text, kind = "error") {
 }
 
 async function api(path, options) {
-  const res = await fetch(path, options);
+  let res;
+  try {
+    res = await fetch(path, options);
+  } catch {
+    // fetch自体が失敗＝サーバーに届いていない。ほぼ黒い画面を閉じたケース。
+    throw new Error(
+      "サーバーに接続できませんでした。黒い画面（Clara - 投稿案メーカー）が閉じていませんか？"
+        + " もう一度 start をダブルクリックして起動してから、このページを再読み込み（F5）してください。",
+    );
+  }
   const data = await res.json().catch(() => ({ error: "サーバーからの応答を読み取れませんでした。" }));
   if (!res.ok) throw new Error(data.error || "エラーが発生しました。");
   return data;
